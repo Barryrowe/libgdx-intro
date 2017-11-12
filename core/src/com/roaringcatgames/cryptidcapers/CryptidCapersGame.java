@@ -2,6 +2,7 @@ package com.roaringcatgames.cryptidcapers;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
@@ -14,15 +15,18 @@ import com.badlogic.gdx.utils.Array;
 
 public class CryptidCapersGame extends ApplicationAdapter implements InputProcessor {
 
+    private final float NESSIE_BASE_SPEED = 60f;
+    
     private SpriteBatch batch;
     private Vector2 nessiePosition = new Vector2(257f, 3f);
     private TextureRegion nessieStill;
-    private TextureRegion nessieAnimatedFrame;
+    private TextureRegion nessieFrameToRender;
     private Animation<TextureRegion> nessieWalking;
+    private Animation<TextureRegion> nessieRunning;
     private float animationTime = 0f;
     
 	private boolean isGoingLeft = true;
-    private float nessieSpeed = 80f;
+    private boolean isNessiePaused = false;
 
 	private void log(String message){
 	    Gdx.app.log("APPLICATION_ADAPTER", message);
@@ -46,6 +50,18 @@ public class CryptidCapersGame extends ApplicationAdapter implements InputProces
             1f/5f,
             new Array<TextureRegion>(walkingTextures),
             Animation.PlayMode.LOOP);
+
+        Array<TextureRegion> runningTextures = new Array<TextureRegion>();
+        runningTextures.addAll(
+                new TextureRegion(new Texture("nessie/run_1.png")),
+                new TextureRegion(new Texture("nessie/run_2.png")),
+                new TextureRegion(new Texture("nessie/run_3.png")),
+                new TextureRegion(new Texture("nessie/run_4.png"))
+        );
+        nessieRunning = new Animation<TextureRegion>(
+                1f/8f,
+                new Array<TextureRegion>(runningTextures),
+                Animation.PlayMode.LOOP);
 
         Gdx.input.setInputProcessor(this);
 
@@ -79,29 +95,59 @@ public class CryptidCapersGame extends ApplicationAdapter implements InputProces
 	private void update(float deltaTime){
 	    //Naively prevent a frame from processing above 60fps
 	    float throttledDelta = MathUtils.clamp(deltaTime, 0f, 1f/60f);
-        
-	    //Update our position, toggling the direction if we go over
-        float xAdjustment = throttledDelta * nessieSpeed;
-	    if(isGoingLeft){
-	        nessiePosition.x -= xAdjustment;
-	        if(nessiePosition.x <= 0f){
-	            isGoingLeft = false;
+
+        if(!isNessiePaused) {
+
+            //Poll For Input from User to see if they have reset the
+            //  direction
+            float movementSpeed = NESSIE_BASE_SPEED;
+            boolean isRunning = false;
+            if(Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.A)) {
+                isGoingLeft = true;
+                movementSpeed *= 3f;
+                isRunning = true;
+            }else if(Gdx.input.isKeyPressed(Input.Keys.RIGHT) || Gdx.input.isKeyPressed(Input.Keys.D)) {
+                isGoingLeft = false;
+                movementSpeed *= 3f;
+                isRunning = true;
             }
+
+            //Update our position, toggling the direction if we go over
+            float xAdjustment = throttledDelta * movementSpeed;
+            float newX = nessiePosition.x;
+            if (isGoingLeft) {
+                newX -= xAdjustment;
+            } else {
+                newX += xAdjustment;
+            }
+
+            nessiePosition.x = MathUtils.clamp(newX, 0f, 400f);
+
+            //If the player is pressing the running keys,
+            //  we don't need to flip the direction as they are
+            //  currently overriding it anyway.
+            if(!isRunning) {
+                if (nessiePosition.x == 0f && isGoingLeft) {
+                    isGoingLeft = false;
+                } else if (nessiePosition.x == 400f && !isGoingLeft) {
+                    isGoingLeft = true;
+                }
+            }
+
+            //Update Animation Frame
+            animationTime += throttledDelta;
+            nessieFrameToRender = isRunning ?
+                    nessieRunning.getKeyFrame(animationTime) :
+                    nessieWalking.getKeyFrame(animationTime);
+            
         }else{
-            nessiePosition.x += xAdjustment;
-	        if(nessiePosition.x >= 400f){
-	            isGoingLeft = true;
-            }
+            nessieFrameToRender = nessieStill;
         }
 
-        //Update Animation Frame
-        animationTime += throttledDelta;
-        nessieAnimatedFrame = nessieWalking.getKeyFrame(animationTime);
-
         //Flip the texture if needed for current direction
-        if((isGoingLeft && nessieAnimatedFrame.isFlipX()) ||
-           (!isGoingLeft) && !nessieAnimatedFrame.isFlipX()){
-            nessieAnimatedFrame.flip(true, false);
+        if ((isGoingLeft && nessieFrameToRender.isFlipX()) ||
+                (!isGoingLeft) && !nessieFrameToRender.isFlipX()) {
+            nessieFrameToRender.flip(true, false);
         }
     }
 
@@ -110,7 +156,7 @@ public class CryptidCapersGame extends ApplicationAdapter implements InputProces
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         batch.begin();
 
-        batch.draw(nessieAnimatedFrame, nessiePosition.x, nessiePosition.y);
+        batch.draw(nessieFrameToRender, nessiePosition.x, nessiePosition.y);
 
         batch.end();
     }
@@ -118,6 +164,9 @@ public class CryptidCapersGame extends ApplicationAdapter implements InputProces
     @Override
     public boolean keyDown(int keycode) {
 	    log("Key Down: " + keycode);
+	    if(keycode == Input.Keys.SPACE){
+	        isNessiePaused = !isNessiePaused;
+        }
         return false;
     }
 
