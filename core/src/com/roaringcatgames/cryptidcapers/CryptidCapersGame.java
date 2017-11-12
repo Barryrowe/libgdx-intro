@@ -9,24 +9,28 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 public class CryptidCapersGame extends ApplicationAdapter {
 	SpriteBatch batch;
 	Texture img;
-	                                           
+
+	private void log(String message){
+	    Gdx.app.log("APPLICATION_ADAPTER", message);
+    }
+
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
 		img = new Texture("badlogic.jpg");
-        Gdx.app.log("APPLICATION_LISTENER", "CREATE FIRED");
+        log("CREATE FIRED");
 	}
 
 	@Override
 	public void resume() {
 		super.resume();
-		Gdx.app.log("APPLICATION_LISTENER", "RESUME FIRED");
+		log("RESUME FIRED");
 	}
 
 	@Override
 	public void pause() {
 		super.pause();
-		Gdx.app.log("APPLICATION_LISTENER", "PAUSE FIRED");
+		log("PAUSE FIRED");
 	}
 
 	@Override
@@ -40,7 +44,7 @@ public class CryptidCapersGame extends ApplicationAdapter {
 	
 	@Override
 	public void dispose () {
-        Gdx.app.log("APPLICATION_LISTENER", "DISPOSE FIRED");
+        log("DISPOSE FIRED");
 		batch.dispose();
 		img.dispose();
 	}
