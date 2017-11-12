@@ -4,19 +4,24 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Array;
 
 public class CryptidCapersGame extends ApplicationAdapter {
-	SpriteBatch batch;
-	Texture img;
-	Sprite nessie;
 
-	private final float NESSIE_SPEED = 20f;
-
+    private SpriteBatch batch;
+    private Vector2 nessiePosition = new Vector2(257f, 3f);
+    private TextureRegion nessieStill;
+    private TextureRegion nessieAnimatedFrame;
+    private Animation<TextureRegion> nessieWalking;
+    private float animationTime = 0f;
+    
 	private boolean isGoingLeft = true;
+    private float nessieSpeed = 80f;
 
 	private void log(String message){
 	    Gdx.app.log("APPLICATION_ADAPTER", message);
@@ -25,13 +30,21 @@ public class CryptidCapersGame extends ApplicationAdapter {
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
-		img = new Texture("badlogic.jpg");
-		nessie = new Sprite(
-            new TextureRegion(
-                new Texture("nessie/still.png")
-            )
+
+		nessieStill = new TextureRegion(new Texture("nessie/still.png"));
+		Array<TextureRegion> walkingTextures = new Array<TextureRegion>();
+		walkingTextures.addAll(
+            new TextureRegion(new Texture("nessie/walking_1.png")),
+            new TextureRegion(new Texture("nessie/walking_2.png")),
+            new TextureRegion(new Texture("nessie/walking_3.png")),
+            new TextureRegion(new Texture("nessie/walking_4.png")),
+            new TextureRegion(new Texture("nessie/walking_5.png"))
         );
-		nessie.setPosition(257, 257);
+		nessieWalking = new Animation<TextureRegion>(
+            1f/5f,
+            new Array<TextureRegion>(walkingTextures),
+            Animation.PlayMode.LOOP);
+
         log("CREATE FIRED");
 	}
 
@@ -49,7 +62,6 @@ public class CryptidCapersGame extends ApplicationAdapter {
 
 	@Override
 	public void render () {
-
 	    update(Gdx.graphics.getDeltaTime());
 	    draw();
 	}
@@ -58,36 +70,43 @@ public class CryptidCapersGame extends ApplicationAdapter {
 	public void dispose () {
         log("DISPOSE FIRED");
 		batch.dispose();
-		img.dispose();
 	}
 
 	private void update(float deltaTime){
 	    //Naively prevent a frame from processing above 60fps
 	    float throttledDelta = MathUtils.clamp(deltaTime, 0f, 1f/60f);
-
-	    float xAdjustment = throttledDelta * NESSIE_SPEED;
-
+        
+	    //Update our position, toggling the direction if we go over
+        float xAdjustment = throttledDelta * nessieSpeed;
 	    if(isGoingLeft){
-	        nessie.setX(nessie.getX() - xAdjustment);
-	        if(nessie.getX() <= 0f){
+	        nessiePosition.x -= xAdjustment;
+	        if(nessiePosition.x <= 0f){
 	            isGoingLeft = false;
             }
         }else{
-	        nessie.setX(nessie.getX() + xAdjustment);
-	        if(nessie.getX() >= 600f){
+            nessiePosition.x += xAdjustment;
+	        if(nessiePosition.x >= 400f){
 	            isGoingLeft = true;
             }
+        }
+
+        //Update Animation Frame
+        animationTime += throttledDelta;
+        nessieAnimatedFrame = nessieWalking.getKeyFrame(animationTime);
+
+        //Flip the texture if needed for current direction
+        if((isGoingLeft && nessieAnimatedFrame.isFlipX()) ||
+           (!isGoingLeft) && !nessieAnimatedFrame.isFlipX()){
+            nessieAnimatedFrame.flip(true, false);
         }
     }
 
     private void draw(){
-        Gdx.gl.glClearColor(1, 0, 0, 1);
+        Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         batch.begin();
 
-        batch.draw(img, 0, 0);
-
-        nessie.draw(batch);
+        batch.draw(nessieAnimatedFrame, nessiePosition.x, nessiePosition.y);
 
         batch.end();
     }
