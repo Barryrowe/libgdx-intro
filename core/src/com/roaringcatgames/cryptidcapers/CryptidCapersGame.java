@@ -48,4 +48,10 @@ public class CryptidCapersGame extends ApplicationAdapter {
 		batch.dispose();
 		img.dispose();
 	}
+
+  @Override
+  public void resize(int width, int height){
+      log("RESIZE FIRED w/ width: " + width + " and height: " + height);
+      super.resize(width, height);
+  }
 }
